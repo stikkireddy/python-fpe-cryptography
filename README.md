@@ -2,6 +2,10 @@
 Creates format preserving encryption using cryptography instead of pycryptodome. This is so you can cleanly run this in Databricks sql. Based off of https://github.com/mysto/python-fpe and ported to using cryptography AES ECB https://en.wikipedia.org/wiki/Block_cipher_mode_of_operation#ECB and if you want to 
 learn more about fpe you can read this: https://github.com/mysto/python-fpe?tab=readme-ov-file#the-ff3-algorithm.
 
+Example here by colleage Andrew Weaver: https://github.com/andyweaves/databricks-notebooks/blob/main/notebooks/privacy/format_preserving_encryption.py
+
+This is a port of it into a python udf. You can find the ported code in fpe.py
+
 ## Python UDF for UC
 
 Run this to create the function modify the catalog and schema as needed. 
