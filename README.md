@@ -6,6 +6,8 @@ Example here by colleage Andrew Weaver: https://github.com/andyweaves/databricks
 
 This is a port of it into a python udf. You can find the ported code in fpe.py
 
+Whats left is a whole slew of fuzz tests to ensure it works :-).
+
 ## Python UDF for UC
 
 Run this to create the function modify the catalog and schema as needed. 
