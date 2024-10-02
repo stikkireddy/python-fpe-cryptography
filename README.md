@@ -13,7 +13,16 @@ learn more about fpe you can read this: https://github.com/mysto/python-fpe?tab=
 
 Example here by colleague Andrew Weaver: https://github.com/andyweaves/databricks-notebooks/blob/main/notebooks/privacy/format_preserving_encryption.py
 
-This is a port of it into a python udf. You can find the ported code in fpe.py
+This is a port of it into a python udf. You can find the ported code in [algo.py](ff3_cryptography/algo.py) and 
+the port of Andrew's work in [fpe.py](ff3_cryptography/fpe.py).
+
+FPE is a easy abstraction on top of the FF3 cipher.
+
+**WARNING: For alphabet only input strings since the current implementation of FPE is dynamic it will prioritize
+alphanumeric charset over the alphabet charset. The reason is if you have an alphanumeric string, and you get back an
+alphabet only string then the alphacharset will be applied during decryption leading to wrong decrypted text. This will
+be fixed in a future release of the library by asking the user to provide the appropriate charset via numeric, alpha,
+alphanum. It will error if the input is not appropriate charset.**
 
 ## Install in notebook or python
 

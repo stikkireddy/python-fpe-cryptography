@@ -58,6 +58,16 @@ def single_fuzz_test(iteration):
         f"with ciphertext {crypto_ciphertext} and pycryptodome ciphertext {pycryptodome_ciphertext} with key {key} and tweak {tweak}"
     )
 
+    assert plaintext == crypto_decrypted, (
+        f"Iteration {iteration}: Decryption mismatch, cryptography={crypto_decrypted} != pycryptodome={pycryptodome_decrypted} != plaintext={plaintext} "
+        f"with ciphertext {crypto_ciphertext} and pycryptodome ciphertext {pycryptodome_ciphertext} with key {key} and tweak {tweak}"
+    )
+
+    assert plaintext == pycryptodome_decrypted, (
+        f"Iteration {iteration}: Decryption mismatch, cryptography={crypto_decrypted} != pycryptodome={pycryptodome_decrypted} != plaintext={plaintext} "
+        f"with ciphertext {crypto_ciphertext} and pycryptodome ciphertext {pycryptodome_ciphertext} with key {key} and tweak {tweak}"
+    )
+
     if iteration % 1000 == 0:
         print(f"Iteration {iteration}: Test passed")
 
