@@ -80,9 +80,13 @@ in the sql function or in another table such that if two different users have th
 text. 
 
 
-Please take a look at for the fill private python udf implementation [01_python_udf.sql](sql/01_python_udf.sql).
-For a reference encrypt look at [02_encrypt_sql_udf.sql](sql/02_encrypt_sql_udf.sql).
-For a reference decrypt look at [03_decrypt_sql_udf.sql](sql/03_decrypt_sql_udf.sql).
+
+Python UDF Functions (encrypt/decrypt private method)
+* For a reference encrypt look at [01_python_udf.sql](sql/01_python_udf.sql).
+
+SQL UDF Functions (encrypt/decrypt public functions with secrets injected)
+* For a reference encrypt look at [02_encrypt_sql_udf.sql](sql/02_encrypt_sql_udf.sql).
+* For a reference decrypt look at [03_decrypt_sql_udf.sql](sql/03_decrypt_sql_udf.sql).
 
 
 ### Using the private python function and messing with it.
