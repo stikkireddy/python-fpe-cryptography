@@ -1,4 +1,5 @@
 import functools
+import multiprocessing
 import random
 import secrets
 import string
@@ -51,7 +52,7 @@ def single_fuzz_test(iteration):
         print(f"Iteration {iteration}: Test passed")
 
 
-def test_error():
+def test_error_too_long():
     with pytest.raises(ValueError) as e:
         key = secrets.token_bytes(32).hex()
 
@@ -67,12 +68,35 @@ def test_error():
 
     assert "not within max bounds" in str(e.value)
 
-def test_fuzz():
-    iterations = 10000  # Number of tests to run
+def test_error_too_short():
+    with pytest.raises(ValueError) as e:
+        key = secrets.token_bytes(32).hex()
+
+        # Generate a random tweak (56 bits)
+        tweak = secrets.token_bytes(7).hex()
+
+        charset = string.digits + string.ascii_lowercase + string.ascii_uppercase
+
+        # Define plaintext length based on FF3 constraints (between 2 and 32)
+        plaintext_length = 2
+        plaintext = ''.join(random.choices(charset, k=plaintext_length))
+        crypto_encrypt_method(text=plaintext, key=key, tweak=tweak)
+
+    assert "not within minimum bounds" in str(e.value)
+
+def test_fuzz_small():
+    iterations = 1000  # Number of tests to run
     for i in range(iterations):
         single_fuzz_test(i)
     # with multiprocessing.Pool() as pool:
     #     pool.map(single_fuzz_test, range(iterations))
+
+def test_fuzz_large():
+    iterations = 10000  # Number of tests to run
+    # for i in range(iterations):
+    #     single_fuzz_test(i)
+    with multiprocessing.Pool() as pool:
+        pool.map(single_fuzz_test, range(iterations))
 
 
 

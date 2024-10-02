@@ -93,7 +93,7 @@ def _encrypt_or_decrypt_by_type(text: str,
     elif text.isalnum():
         return _encrypt_or_decrypt(text, ALPHANUMERIC_CHARSET, operation, key, tweak, ff3_cipher_klass)
     else:
-        return _encrypt_or_decrypt_alpha(text, operation, key, tweak, ff3_cipher_klass)
+        raise ValueError(f"text: {text} should be either numeric or alphanumeric")
 
 
 def fpe_encrypt_or_decrypt(*,
@@ -114,8 +114,9 @@ def fpe_encrypt_or_decrypt(*,
     elif text.isalnum():
         return _encrypt_or_decrypt(text, ALPHANUMERIC_CHARSET, operation, key, tweak, ff3_cipher_klass)
 
-    elif text.isalpha():
-        return _encrypt_or_decrypt_alpha(text, operation, key, tweak, ff3_cipher_klass)
+    # should never really be reached as the above two conditions should cover all cases
+    # elif text.isalpha():
+    #     return _encrypt_or_decrypt_alpha(text, operation, key, tweak, ff3_cipher_klass)
 
     elif text.isascii():
 
