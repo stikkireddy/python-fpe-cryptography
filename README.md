@@ -12,17 +12,20 @@ Whats left is a whole slew of fuzz tests to ensure it works :-).
 
 Run this to create the function modify the catalog and schema as needed. 
 
-```sql
+```python
 CREATE OR REPLACE FUNCTION main.default.encrypt_decrypt_fpe(key STRING, tweak STRING, text STRING, operation STRING)
 RETURNS STRING
 LANGUAGE PYTHON
 AS $$
+# based on https://github.com/mysto/python-fpe/blob/main/ff3/ff3.py
+
 import logging
 import math
 
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 import string
+import functools
 
 # The recommendation in Draft SP 800-38G was strengthened to a requirement in Draft
 # SP 800-38G Revision 1: the minimum domain size for FF1 and FF3-1 is one million.
@@ -35,9 +38,11 @@ HALF_TWEAK_LEN = TWEAK_LEN // 2
 
 logger = logging.getLogger(__name__)
 
+
 def reverse_bytes(data):
     """Reverse the bytes in the input data."""
     return data[::-1]
+
 
 """
 FF3 encodes a string within a range of minLen..maxLen. The spec uses an alternating
@@ -67,6 +72,7 @@ encrypt value to decrypt the text. XOR is trivially invertible when you know two
 arguments.
 """
 
+
 class FF3Cipher:
     """Class FF3Cipher implements the FF3 format-preserving encryption algorithm.
 
@@ -94,7 +100,7 @@ class FF3Cipher:
 
         # We simplify the specs log[radix](2^96) to 96/log2(radix) using the log base
         # change rule
-        self.maxLen = 2 * math.floor(96/math.log2(radix))
+        self.maxLen = 2 * math.floor(96 / math.log2(radix))
 
         klen = len(keybytes)
 
@@ -352,6 +358,7 @@ class FF3Cipher:
 
         return A + B
 
+
 def aes_ecb_encrypt(key, data):
     """
     Encrypts data using AES ECB mode with the given key.
@@ -365,6 +372,7 @@ def aes_ecb_encrypt(key, data):
     cipher = Cipher(algorithms.AES(key), modes.ECB(), backend=default_backend())
     encryptor = cipher.encryptor()
     return encryptor.update(data) + encryptor.finalize()
+
 
 def calculate_p(i, alphabet, W, B):
     # P is always 16 bytes
@@ -387,6 +395,7 @@ def calculate_p(i, alphabet, W, B):
     P[BLOCK_SIZE - len(BBytes):] = BBytes
     return P
 
+
 def calculate_tweak64_ff3_1(tweak56):
     tweak64 = bytearray(8)
     tweak64[0] = tweak56[0]
@@ -398,6 +407,7 @@ def calculate_tweak64_ff3_1(tweak56):
     tweak64[6] = tweak56[6]
     tweak64[7] = ((tweak56[3] & 0x0F) << 4)
     return bytes(tweak64)
+
 
 def encode_int_r(n, alphabet, length=0):
     """
@@ -426,6 +436,7 @@ def encode_int_r(n, alphabet, length=0):
 
     return x
 
+
 def decode_int_r(astring, alphabet):
     """Decode a Base X encoded string into the number
 
@@ -448,8 +459,6 @@ def decode_int_r(astring, alphabet):
 
     return num
 
-# notebook https://github.com/andyweaves/databricks-notebooks/blob/main/notebooks/privacy/format_preserving_encryption.py
-
 SPECIAL_CHAR_MODE = "REASSEMBLE"
 
 # Define the character sets...
@@ -461,17 +470,18 @@ ALPHANUMERIC_CHARSET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRST
 ASCII_CHARSET = """0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ \t\n\r\x0b\x0c"""
 SPECIAL_CHARSET = """!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~ """
 
+
 def reassemble_string(string: str, positions: list, characters: str) -> str:
+    for i in range(len(positions)):
+        pos = positions[i]
+        char = characters[i]
+        string = string[:pos] + char + string[pos:]
+    return string
 
-  for i in range(len(positions)):
-    pos = positions[i]
-    char = characters[i]
-    string = string[:pos] + char + string[pos:]
-  return string
 
-
-def encrypt_or_decrypt(text: str, charset: str, operation: str) -> str:
-    c = FF3Cipher.withCustomAlphabet(key, tweak, charset)
+def encrypt_or_decrypt(text: str, charset: str, operation: str, key: str, tweak: str,
+                       ff3_cipher_klass: FF3Cipher) -> str:
+    c = ff3_cipher_klass.withCustomAlphabet(key, tweak, charset)
     split_string = lambda string: (lambda s: s[:-1] + [s[-2] + s[-1]] if len(s[-1]) < 4 else s)(
         [string[i:i + 23] for i in range(0, len(string), 23)])
 
@@ -493,54 +503,61 @@ def encrypt_or_decrypt(text: str, charset: str, operation: str) -> str:
     return output
 
 
-def encrypt_or_decrypt_alpha(text: str, operation: str) -> str:
+def encrypt_or_decrypt_alpha(text: str, operation: str, key: str, tweak: str, ff3_cipher_klass: FF3Cipher) -> str:
     if text.isupper():
-        return encrypt_or_decrypt(text, ALPA_CHARSET_UPPER, operation)
+        return encrypt_or_decrypt(text, ALPA_CHARSET_UPPER, operation, key, tweak, ff3_cipher_klass)
     elif text.islower():
-        return encrypt_or_decrypt(text, ALPHA_CHARSET_LOWER, operation)
+        return encrypt_or_decrypt(text, ALPHA_CHARSET_LOWER, operation, key, tweak, ff3_cipher_klass)
     else:
-        return encrypt_or_decrypt(text, ALPHA_CHARSET_ALL, operation)
+        return encrypt_or_decrypt(text, ALPHA_CHARSET_ALL, operation, key, tweak, ff3_cipher_klass)
 
+def encrypt_or_decrypt_by_type(text: str, operation: str, key: str, tweak: str, ff3_cipher_klass: FF3Cipher) -> str:
+    if text.isnumeric():
+        return encrypt_or_decrypt(text, NUMERIC_CHARSET, operation, key, tweak, ff3_cipher_klass)
+    elif text.isalnum():
+        return encrypt_or_decrypt(text, ALPHANUMERIC_CHARSET, operation, key, tweak, ff3_cipher_klass)
+    else:
+        return encrypt_or_decrypt_alpha(text, operation, key, tweak, ff3_cipher_klass)
 
-def fpe_encrypt_or_decrypt(text: str, operation: str) -> str:
+def fpe_encrypt_or_decrypt(text: str, operation: str, key: str, tweak: str, ff3_cipher_klass: FF3Cipher) -> str:
     if len(text) < 6:
-        raise ValueError(f"Input string length {len(text)} is not within minimum bounds: {text}")
+        raise ValueError(f"Input string length {len(text)} is not within minimum bounds: 6")
+
+    if len(text) >= 47:
+        raise ValueError(f"Input length is {len(text)} is not within max bounds of: 47")
 
     if text.isnumeric():
-        return encrypt_or_decrypt(text, NUMERIC_CHARSET, operation)
+        return encrypt_or_decrypt(text, NUMERIC_CHARSET, operation, key, tweak, ff3_cipher_klass)
 
     elif text.isalnum():
-        return encrypt_or_decrypt(text, ALPHANUMERIC_CHARSET, operation)
+        return encrypt_or_decrypt(text, ALPHANUMERIC_CHARSET, operation, key, tweak, ff3_cipher_klass)
 
     elif text.isalpha():
-        return encrypt_or_decrypt_alpha(text, operation)
+        return encrypt_or_decrypt_alpha(text, operation, key, tweak, ff3_cipher_klass)
 
     elif text.isascii():
 
         import re
-        encrypt_or_decrypt_by_type = lambda x, y: encrypt_or_decrypt(x, NUMERIC_CHARSET,
-                                                                     y) if x.isnumeric() else encrypt_or_decrypt(x,
-                                                                                                                 ALPHANUMERIC_CHARSET,
-                                                                                                                 y) if x.isalnum() else encrypt_or_decrypt_alpha(
-            x, y) if x.isalpha() else None
-
         if SPECIAL_CHAR_MODE == "TOKENIZE":
-            return encrypt_or_decrypt(text, ASCII_CHARSET, operation)
+            return encrypt_or_decrypt(text, ASCII_CHARSET, operation, key, tweak, ff3_cipher_klass)
         elif SPECIAL_CHAR_MODE == "REASSEMBLE":
             extract_special_chars = lambda string: ([char for char in re.findall(r"[^\w]", string)],
                                                     [i for i, char in enumerate(string) if char in SPECIAL_CHARSET])
             characters, positions = extract_special_chars(text)
             removed = re.sub("([^a-zA-Z0-9])", "", text)
-            encrypted_decrypted = encrypt_or_decrypt_by_type(removed, operation)
+            encrypted_decrypted = encrypt_or_decrypt_by_type(removed, operation, key, tweak, ff3_cipher_klass)
             reassembled = reassemble_string(encrypted_decrypted, positions, characters)
             return reassembled
         else:
             raise NotImplementedError("Invalid option - must be 'TOKENIZE' or 'REASSEMBLE'")
 
+
+crypto_fpe_encrypt_or_decrypt = functools.partial(fpe_encrypt_or_decrypt, ff3_cipher_klass=FF3Cipher)
+
 if operation == "ENCRYPT":
-    return fpe_encrypt_or_decrypt(text, "ENCRYPT")
+    return crypto_fpe_encrypt_or_decrypt(text=text, operation="ENCRYPT", key=key, tweak=tweak)
 elif operation == "DECRYPT":
-    return fpe_encrypt_or_decrypt(text, "DECRYPT")
+    return crypto_fpe_encrypt_or_decrypt(text=text, operation="DECRYPT", key=key, tweak=tweak)
 else:
     raise ValueError("Invalid option - must be 'ENCRYPT' or 'DECRYPT'")
 $$;

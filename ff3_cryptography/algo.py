@@ -1,4 +1,7 @@
-# based on https://github.com/mysto/python-fpe/blob/main/ff3/ff3.py
+# based on https://github.com/mysto/python-fpe/blob/main/ff3/ff3.py but ported to using cryptography
+# instead of pycryptodome
+
+# Package ff3 implements the FF3-1 format-preserving encryption algorithm/scheme
 
 import logging
 import math
@@ -18,9 +21,11 @@ HALF_TWEAK_LEN = TWEAK_LEN // 2
 
 logger = logging.getLogger(__name__)
 
+
 def reverse_bytes(data):
     """Reverse the bytes in the input data."""
     return data[::-1]
+
 
 """
 FF3 encodes a string within a range of minLen..maxLen. The spec uses an alternating
@@ -50,6 +55,7 @@ encrypt value to decrypt the text. XOR is trivially invertible when you know two
 arguments.
 """
 
+
 class FF3Cipher:
     """Class FF3Cipher implements the FF3 format-preserving encryption algorithm.
 
@@ -77,7 +83,7 @@ class FF3Cipher:
 
         # We simplify the specs log[radix](2^96) to 96/log2(radix) using the log base
         # change rule
-        self.maxLen = 2 * math.floor(96/math.log2(radix))
+        self.maxLen = 2 * math.floor(96 / math.log2(radix))
 
         klen = len(keybytes)
 
@@ -335,6 +341,7 @@ class FF3Cipher:
 
         return A + B
 
+
 def aes_ecb_encrypt(key, data):
     """
     Encrypts data using AES ECB mode with the given key.
@@ -348,6 +355,7 @@ def aes_ecb_encrypt(key, data):
     cipher = Cipher(algorithms.AES(key), modes.ECB(), backend=default_backend())
     encryptor = cipher.encryptor()
     return encryptor.update(data) + encryptor.finalize()
+
 
 def calculate_p(i, alphabet, W, B):
     # P is always 16 bytes
@@ -370,6 +378,7 @@ def calculate_p(i, alphabet, W, B):
     P[BLOCK_SIZE - len(BBytes):] = BBytes
     return P
 
+
 def calculate_tweak64_ff3_1(tweak56):
     tweak64 = bytearray(8)
     tweak64[0] = tweak56[0]
@@ -381,6 +390,7 @@ def calculate_tweak64_ff3_1(tweak56):
     tweak64[6] = tweak56[6]
     tweak64[7] = ((tweak56[3] & 0x0F) << 4)
     return bytes(tweak64)
+
 
 def encode_int_r(n, alphabet, length=0):
     """
@@ -408,6 +418,7 @@ def encode_int_r(n, alphabet, length=0):
         x = x.ljust(length, alphabet[0])
 
     return x
+
 
 def decode_int_r(astring, alphabet):
     """Decode a Base X encoded string into the number
