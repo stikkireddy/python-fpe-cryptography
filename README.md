@@ -87,12 +87,12 @@ SQL UDF Functions (encrypt/decrypt public functions with secrets injected)
 The SQL UDF Functions will look something like this:
 
 ```sql
-CREATE OR REPLACE FUNCTION encrypt_fpe(text STRING, operation STRING)
+CREATE OR REPLACE FUNCTION encrypt_fpe(text STRING)
 RETURNS STRING
 DETERMINISTIC
 LANGUAGE SQL
 -- you may chose to specify functions from another schema
-RETURN SELECT_encrypt_decrypt_fpe(
+RETURN SELECT _encrypt_decrypt_fpe(
     key => secret("my_scope", "my_encryption_key_hex"),
     tweak => secret("my_scope", "my_tweak_hex"),
     text => text,
