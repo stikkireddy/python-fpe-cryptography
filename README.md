@@ -6,8 +6,7 @@
 ![GitHub Tag](https://img.shields.io/github/v/tag/stikkireddy/python-fpe-cryptography?sort=semver&label=Latest%20Version)
 
 
-Creates format preserving encryption using cryptography instead of pycryptodome. T
-his is so you can cleanly run this in Databricks sql using UC functions.
+Creates format preserving encryption using cryptography instead of pycryptodome. This is so you can cleanly run this in Databricks sql using UC functions.
 Based off of https://github.com/mysto/python-fpe and ported to using cryptography AES ECB 
 https://en.wikipedia.org/wiki/Block_cipher_mode_of_operation#ECB and if you want to 
 learn more about fpe you can read this: https://github.com/mysto/python-fpe?tab=readme-ov-file#the-ff3-algorithm.
@@ -15,6 +14,17 @@ learn more about fpe you can read this: https://github.com/mysto/python-fpe?tab=
 Example here by colleague Andrew Weaver: https://github.com/andyweaves/databricks-notebooks/blob/main/notebooks/privacy/format_preserving_encryption.py
 
 This is a port of it into a python udf. You can find the ported code in fpe.py
+
+## Install in notebook or python
+
+The library is pinned to use `cryptography>=43.0.1,<44.0.0`. In Databricks, you may 
+have another version of cryptography, but it is very highly likely to work. Please let us 
+know if you see any issues.
+
+
+```bash
+pip install ff3-cryptography
+```
 
 ## Using FPE as a python library with cryptography
 
@@ -64,7 +74,17 @@ Run this to create the function modify the catalog and schema as needed. The bes
 is to split it up into 3 or more functions. One for the python UDF that is private and meant to be used by sql functions designated 
 with fixed encryption keys & tweak fetched from Databricks secrets. The python udf is meant to be private and designated 
 by starting with `_`. Then you can call the python function by creating a sql function that calls the python function and 
-fills in the encryption key and tweak using the `secret` sql function. Something like this:
+fills in the encryption key and tweak using the `secret` sql function. 
+
+Python UDF Functions (encrypt/decrypt private method)
+* For a reference encrypt look at [01_python_udf.sql](sql/01_python_udf.sql).
+
+SQL UDF Functions (encrypt/decrypt public functions with secrets injected)
+* For a reference encrypt look at [02_encrypt_sql_udf.sql](sql/02_encrypt_sql_udf.sql).
+* For a reference decrypt look at [03_decrypt_sql_udf.sql](sql/03_decrypt_sql_udf.sql).
+
+
+The SQL UDF Functions will look something like this:
 
 ```sql
 CREATE OR REPLACE FUNCTION encrypt_fpe(text STRING, operation STRING)
@@ -85,15 +105,6 @@ Then you can use the `encrypt_fpe` function in your sql queries and likewise for
 In more advanced settings you may have different strategies or different tweaks for different columns or rows designated 
 in the sql function or in another table such that if two different users have the same data they can have different cipher 
 text. 
-
-
-
-Python UDF Functions (encrypt/decrypt private method)
-* For a reference encrypt look at [01_python_udf.sql](sql/01_python_udf.sql).
-
-SQL UDF Functions (encrypt/decrypt public functions with secrets injected)
-* For a reference encrypt look at [02_encrypt_sql_udf.sql](sql/02_encrypt_sql_udf.sql).
-* For a reference decrypt look at [03_decrypt_sql_udf.sql](sql/03_decrypt_sql_udf.sql).
 
 
 ### Using the private python function and messing with it.
