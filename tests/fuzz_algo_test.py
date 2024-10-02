@@ -48,7 +48,8 @@ def single_fuzz_test(iteration):
     (f"Iteration {iteration}: Decryption mismatch, cryptography={crypto_decrypted} != pycryptodome={pycryptodome_decrypted} != plaintext={plaintext} "
      f"with ciphertext {crypto_ciphertext} and pycryptodome ciphertext {pycryptodome_ciphertext} with key {key} and tweak {tweak}")
 
-    print(f"Iteration {iteration}: Test passed")
+    if iteration % 1000 == 0:
+        print(f"Iteration {iteration}: Test passed")
 
 
 def test_error():
