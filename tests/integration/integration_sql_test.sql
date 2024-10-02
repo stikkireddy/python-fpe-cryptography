@@ -4,7 +4,8 @@ USE CATALOG main;
 -- Use the following schema
 USE SCHEMA default;
 
--- Encrypt and decrypt internal python UDF
+-- Create the encrypt/decrypt function
+
 CREATE OR REPLACE FUNCTION _encrypt_decrypt_fpe(key STRING, tweak STRING, text STRING, operation STRING)
 RETURNS STRING
 DETERMINISTIC
@@ -17,10 +18,10 @@ AS $$
 
 import logging
 import math
-
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.backends import default_backend
 import string
+
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 # The recommendation in Draft SP 800-38G was strengthened to a requirement in Draft
 # SP 800-38G Revision 1: the minimum domain size for FF1 and FF3-1 is one million.
@@ -53,11 +54,11 @@ An encoded string representation of x is in the given integer base, which must b
 least 2. The result uses the lower-case letters 'a' to 'z' for digit values 10 to 35
 and upper-case letters 'A' to 'Z' for digit values 36 to 61.
 
-Instead of specifying the base, an alphabet may be specified as a string of unique
+Instead of specifying the base, an alphabet may be specified as a string of unique 
 characters. For bases larger than 62, an explicit alphabet is mandatory.
 
-FF3Cipher initializes a new FF3 Cipher object for encryption or decryption with key,
-tweak and radix parameters. The default radix is 10, supporting encryption of decimal
+FF3Cipher initializes a new FF3 Cipher object for encryption or decryption with key, 
+tweak and radix parameters. The default radix is 10, supporting encryption of decimal 
 numbers.
 
 AES ECB is used as the cipher round value for XORing. ECB has a block size of 128 bits
@@ -74,6 +75,7 @@ class FF3Cipher:
     If a value of radix between 2 and 62 is specified, then that many characters
     from the base 62 alphabet (digits + lowercase + uppercase latin) are used.
     """
+
     DOMAIN_MIN = 1_000_000  # 1M required in FF3-1
     BASE62 = string.digits + string.ascii_lowercase + string.ascii_uppercase
     BASE62_LEN = len(BASE62)
@@ -101,7 +103,9 @@ class FF3Cipher:
 
         # Check if the key is 128, 192, or 256 bits = 16, 24, or 32 bytes
         if klen not in (16, 24, 32):
-            raise ValueError(f'key length is {klen} bytes but must be 128, 192, or 256 bits')
+            raise ValueError(
+                f"key length is {klen} bytes but must be 128, 192, or 256 bits"
+            )
 
         # While FF3 allows radices in [2, 2^16], commonly useful range is 2..62
         if (radix < 2) or (radix > FF3Cipher.RADIX_MAX):
@@ -174,13 +178,17 @@ class FF3Cipher:
 
         # Check if message length is within minLength and maxLength bounds
         if (n < self.minLen) or (n > self.maxLen):
-            raise ValueError(f"message length {n} is not within min {self.minLen} and "
-                             f"max {self.maxLen} bounds")
+            raise ValueError(
+                f"message length {n} is not within min {self.minLen} and "
+                f"max {self.maxLen} bounds"
+            )
 
         # Make sure the length of tweak in bytes is 7 or 8 (56 or 64 bits)
         if len(tweakBytes) not in [TWEAK_LEN_NEW, TWEAK_LEN]:
-            raise ValueError(f"tweak length {len(tweakBytes)} invalid: tweak must be "
-                             f"{TWEAK_LEN_NEW * 8} or {TWEAK_LEN * 8} bits")
+            raise ValueError(
+                f"tweak length {len(tweakBytes)} invalid: tweak must be "
+                f"{TWEAK_LEN_NEW * 8} or {TWEAK_LEN * 8} bits"
+            )
 
         # Todo: Check message is in current radix
 
@@ -203,8 +211,8 @@ class FF3Cipher:
         # Pre-calculate the modulus since it's only one of 2 values,
         # depending on whether i is even or odd
 
-        modU = self.radix ** u
-        modV = self.radix ** v
+        modU = self.radix**u
+        modV = self.radix**v
         logger.debug(f"modU: {modU} modV: {modV}")
 
         # Main Feistel Round, 8 times
@@ -231,7 +239,7 @@ class FF3Cipher:
             S = reverse_bytes(S)
             # logger.debug("S:    ", S.hex())
 
-            y = int.from_bytes(S, byteorder='big')
+            y = int.from_bytes(S, byteorder="big")
 
             # Calculate c
             c = decode_int_r(A, self.alphabet)
@@ -275,13 +283,17 @@ class FF3Cipher:
 
         # Check if message length is within minLength and maxLength bounds
         if (n < self.minLen) or (n > self.maxLen):
-            raise ValueError(f"message length {n} is not within min {self.minLen} and "
-                             f"max {self.maxLen} bounds")
+            raise ValueError(
+                f"message length {n} is not within min {self.minLen} and "
+                f"max {self.maxLen} bounds"
+            )
 
         # Make sure the length of tweak in bytes is 7 or 8
         if len(tweakBytes) not in [TWEAK_LEN_NEW, TWEAK_LEN]:
-            raise ValueError(f"tweak length {len(tweakBytes)} invalid: tweak must be 8 "
-                             f"bytes, or 56 bits")
+            raise ValueError(
+                f"tweak length {len(tweakBytes)} invalid: tweak must be 8 "
+                f"bytes, or 56 bits"
+            )
 
         # Todo: Check message is in current radix
 
@@ -304,8 +316,8 @@ class FF3Cipher:
         # Pre-calculate the modulus since it's only one of 2 values,
         # depending on whether i is even or odd
 
-        modU = self.radix ** u
-        modV = self.radix ** v
+        modU = self.radix**u
+        modV = self.radix**v
         logger.debug(f"modU: {modU} modV: {modV}")
 
         # Main Feistel Round, 8 times
@@ -330,7 +342,7 @@ class FF3Cipher:
 
             # logger.debug("S:    ", S.hex())
 
-            y = int.from_bytes(S, byteorder='big')
+            y = int.from_bytes(S, byteorder="big")
 
             # Calculate c
             c = decode_int_r(B, self.alphabet)
@@ -363,7 +375,9 @@ def aes_ecb_encrypt(key, data):
     :return: The ciphertext as bytes.
     """
     if len(data) != BLOCK_SIZE:
-        raise ValueError(f"Data must be exactly {BLOCK_SIZE} bytes for AES ECB encryption")
+        raise ValueError(
+            f"Data must be exactly {BLOCK_SIZE} bytes for AES ECB encryption"
+        )
     cipher = Cipher(algorithms.AES(key), modes.ECB(), backend=default_backend())
     encryptor = cipher.encryptor()
     return encryptor.update(data) + encryptor.finalize()
@@ -387,7 +401,7 @@ def calculate_p(i, alphabet, W, B):
     BBytes = decode_int_r(B, alphabet).to_bytes(12, "big")
     # logger.debug(f"B: {B} BBytes: {BBytes.hex()}")
 
-    P[BLOCK_SIZE - len(BBytes):] = BBytes
+    P[BLOCK_SIZE - len(BBytes) :] = BBytes
     return P
 
 
@@ -396,11 +410,11 @@ def calculate_tweak64_ff3_1(tweak56):
     tweak64[0] = tweak56[0]
     tweak64[1] = tweak56[1]
     tweak64[2] = tweak56[2]
-    tweak64[3] = (tweak56[3] & 0xF0)
+    tweak64[3] = tweak56[3] & 0xF0
     tweak64[4] = tweak56[4]
     tweak64[5] = tweak56[5]
     tweak64[6] = tweak56[6]
-    tweak64[7] = ((tweak56[3] & 0x0F) << 4)
+    tweak64[7] = (tweak56[3] & 0x0F) << 4
     return bytes(tweak64)
 
 
@@ -416,11 +430,13 @@ def encode_int_r(n, alphabet, length=0):
         'A'
     """
     base = len(alphabet)
-    if (base > FF3Cipher.RADIX_MAX):
-        raise ValueError(f"Base {base} is outside range of supported radix "
-                         f"2..{FF3Cipher.RADIX_MAX}")
+    if base > FF3Cipher.RADIX_MAX:
+        raise ValueError(
+            f"Base {base} is outside range of supported radix "
+            f"2..{FF3Cipher.RADIX_MAX}"
+        )
 
-    x = ''
+    x = ""
     while n >= base:
         n, b = divmod(n, base)
         x += alphabet[b]
@@ -446,16 +462,18 @@ def decode_int_r(astring, alphabet):
     idx = 0
     try:
         for char in reversed(astring):
-            power = (strlen - (idx + 1))
-            num += alphabet.index(char) * (base ** power)
+            power = strlen - (idx + 1)
+            num += alphabet.index(char) * (base**power)
             idx += 1
     except ValueError:
-        raise ValueError(f'char {char} not found in alphabet {alphabet}')
+        raise ValueError(f"char {char} not found in alphabet {alphabet}")
 
     return num
 
+
 import functools
 from typing import Literal
+
 
 SPECIAL_CHAR_MODE = "REASSEMBLE"
 
@@ -479,7 +497,9 @@ def _reassemble_string(input_str: str, positions: list, characters: str) -> str:
     # after code
     # input_str will not have special characters and at the following positions will be the special characters
     # positions will be the positions of the special characters
-    assert len(positions) == len(characters), "Length of positions and characters must be equal"
+    assert len(positions) == len(
+        characters
+    ), "Length of positions and characters must be equal"
     input_str_length = len(input_str)
     for i in range(len(positions)):
         pos = positions[i]
@@ -491,20 +511,25 @@ def _reassemble_string(input_str: str, positions: list, characters: str) -> str:
             input_str = input_str + char
             input_str_length = len(input_str)
         else:
-            raise ValueError(f"Position {pos} is out of bounds for string of length {input_str_length}")
+            raise ValueError(
+                f"Position {pos} is out of bounds for string of length {input_str_length}"
+            )
 
     return input_str
 
 
-def _encrypt_or_decrypt(text: str,
-                        charset: str,
-                        operation: Literal["ENCRYPT", "DECRYPT"],
-                        key: str,
-                        tweak: str,
-                        ff3_cipher_klass: FF3Cipher) -> str:
+def _encrypt_or_decrypt(
+    text: str,
+    charset: str,
+    operation: Literal["ENCRYPT", "DECRYPT"],
+    key: str,
+    tweak: str,
+    ff3_cipher_klass: FF3Cipher,
+) -> str:
     c = ff3_cipher_klass.withCustomAlphabet(key, tweak, charset)
-    split_string = lambda string: (lambda s: s[:-1] + [s[-2] + s[-1]] if len(s[-1]) < 4 else s)(
-        [string[i:i + 23] for i in range(0, len(string), 23)])
+    split_string = lambda string: (
+        lambda s: s[:-1] + [s[-2] + s[-1]] if len(s[-1]) < 4 else s
+    )([string[i : i + 23] for i in range(0, len(string), 23)])
 
     if len(text) > 28:
         split = split_string(text)
@@ -524,71 +549,112 @@ def _encrypt_or_decrypt(text: str,
     return output
 
 
-def _encrypt_or_decrypt_alpha(text: str,
-                              operation: Literal["ENCRYPT", "DECRYPT"],
-                              key: str,
-                              tweak: str,
-                              ff3_cipher_klass: FF3Cipher) -> str:
+def _encrypt_or_decrypt_alpha(
+    text: str,
+    operation: Literal["ENCRYPT", "DECRYPT"],
+    key: str,
+    tweak: str,
+    ff3_cipher_klass: FF3Cipher,
+) -> str:
     if text.isupper():
-        return _encrypt_or_decrypt(text, ALPA_CHARSET_UPPER, operation, key, tweak, ff3_cipher_klass)
+        return _encrypt_or_decrypt(
+            text, ALPA_CHARSET_UPPER, operation, key, tweak, ff3_cipher_klass
+        )
     elif text.islower():
-        return _encrypt_or_decrypt(text, ALPHA_CHARSET_LOWER, operation, key, tweak, ff3_cipher_klass)
+        return _encrypt_or_decrypt(
+            text, ALPHA_CHARSET_LOWER, operation, key, tweak, ff3_cipher_klass
+        )
     else:
-        return _encrypt_or_decrypt(text, ALPHA_CHARSET_ALL, operation, key, tweak, ff3_cipher_klass)
+        return _encrypt_or_decrypt(
+            text, ALPHA_CHARSET_ALL, operation, key, tweak, ff3_cipher_klass
+        )
 
 
-def _encrypt_or_decrypt_by_type(text: str,
-                                operation: Literal["ENCRYPT", "DECRYPT"],
-                                key: str,
-                                tweak: str,
-                                ff3_cipher_klass: FF3Cipher) -> str:
+def _encrypt_or_decrypt_by_type(
+    text: str,
+    operation: Literal["ENCRYPT", "DECRYPT"],
+    key: str,
+    tweak: str,
+    ff3_cipher_klass: FF3Cipher,
+) -> str:
     if text.isnumeric():
-        return _encrypt_or_decrypt(text, NUMERIC_CHARSET, operation, key, tweak, ff3_cipher_klass)
+        return _encrypt_or_decrypt(
+            text, NUMERIC_CHARSET, operation, key, tweak, ff3_cipher_klass
+        )
     elif text.isalnum():
-        return _encrypt_or_decrypt(text, ALPHANUMERIC_CHARSET, operation, key, tweak, ff3_cipher_klass)
+        return _encrypt_or_decrypt(
+            text, ALPHANUMERIC_CHARSET, operation, key, tweak, ff3_cipher_klass
+        )
     else:
-        return _encrypt_or_decrypt_alpha(text, operation, key, tweak, ff3_cipher_klass)
+        raise ValueError(f"text: {text} should be either numeric or alphanumeric")
 
 
-def fpe_encrypt_or_decrypt(*,
-                           text: str,  # can be cipher text or plaintext depending on operation
-                           operation: Literal["ENCRYPT", "DECRYPT"],
-                           key: str,
-                           tweak: str,
-                           ff3_cipher_klass: FF3Cipher) -> str:
+def fpe_encrypt_or_decrypt(
+    *,
+    text: str,  # can be cipher text or plaintext depending on operation
+    operation: Literal["ENCRYPT", "DECRYPT"],
+    key: str,
+    tweak: str,
+    ff3_cipher_klass: FF3Cipher,
+) -> str:
     if len(text) < 6:
-        raise ValueError(f"Input string length {len(text)} is not within minimum bounds: 6")
+        raise ValueError(
+            f"Input string length {len(text)} is not within minimum bounds: 6"
+        )
 
     if len(text) >= 47:
         raise ValueError(f"Input length is {len(text)} is not within max bounds of: 47")
 
     if text.isnumeric():
-        return _encrypt_or_decrypt(text, NUMERIC_CHARSET, operation, key, tweak, ff3_cipher_klass)
+        return _encrypt_or_decrypt(
+            text, NUMERIC_CHARSET, operation, key, tweak, ff3_cipher_klass
+        )
 
     elif text.isalnum():
-        return _encrypt_or_decrypt(text, ALPHANUMERIC_CHARSET, operation, key, tweak, ff3_cipher_klass)
+        return _encrypt_or_decrypt(
+            text, ALPHANUMERIC_CHARSET, operation, key, tweak, ff3_cipher_klass
+        )
 
-    elif text.isalpha():
-        return _encrypt_or_decrypt_alpha(text, operation, key, tweak, ff3_cipher_klass)
+    # should never really be reached as the above two conditions should cover all cases
+    # elif text.isalpha():
+    #     return _encrypt_or_decrypt_alpha(text, operation, key, tweak, ff3_cipher_klass)
 
     elif text.isascii():
 
         import re
+
         if SPECIAL_CHAR_MODE == "TOKENIZE":
-            return _encrypt_or_decrypt(text, ASCII_CHARSET, operation, key, tweak, ff3_cipher_klass)
+            return _encrypt_or_decrypt(
+                text, ASCII_CHARSET, operation, key, tweak, ff3_cipher_klass
+            )
         elif SPECIAL_CHAR_MODE == "REASSEMBLE":
-            extract_special_chars = lambda string: ([char for char in re.findall(r"[^a-zA-Z0-9]", string)],
-                                                    [i for i, char in enumerate(string) if char in SPECIAL_CHARSET])
+            extract_special_chars = lambda string: (
+                [char for char in re.findall(r"[^a-zA-Z0-9]", string)],
+                [i for i, char in enumerate(string) if char in SPECIAL_CHARSET],
+            )
             characters, positions = extract_special_chars(text)
             removed = re.sub("([^a-zA-Z0-9])", "", text)
-            encrypted_decrypted = _encrypt_or_decrypt_by_type(removed, operation, key, tweak, ff3_cipher_klass)
+            encrypted_decrypted = _encrypt_or_decrypt_by_type(
+                removed, operation, key, tweak, ff3_cipher_klass
+            )
             reassembled = _reassemble_string(encrypted_decrypted, positions, characters)
             return reassembled
         else:
-            raise NotImplementedError("Invalid option - must be 'TOKENIZE' or 'REASSEMBLE'")
+            raise NotImplementedError(
+                "Invalid option - must be 'TOKENIZE' or 'REASSEMBLE'"
+            )
 
 
-crypto_fpe_encrypt_or_decrypt = functools.partial(fpe_encrypt_or_decrypt, ff3_cipher_klass=FF3Cipher)
+crypto_fpe_encrypt_or_decrypt = functools.partial(
+    fpe_encrypt_or_decrypt, ff3_cipher_klass=FF3Cipher
+)
+
+crypto_fpe_encrypt = functools.partial(
+    fpe_encrypt_or_decrypt, operation="ENCRYPT", ff3_cipher_klass=FF3Cipher
+)
+crypto_fpe_decrypt = functools.partial(
+    fpe_encrypt_or_decrypt, operation="DECRYPT", ff3_cipher_klass=FF3Cipher
+)
 
 
 if operation == "ENCRYPT":

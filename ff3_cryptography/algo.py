@@ -5,10 +5,10 @@
 
 import logging
 import math
-
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.backends import default_backend
 import string
+
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 # The recommendation in Draft SP 800-38G was strengthened to a requirement in Draft
 # SP 800-38G Revision 1: the minimum domain size for FF1 and FF3-1 is one million.
@@ -62,6 +62,7 @@ class FF3Cipher:
     If a value of radix between 2 and 62 is specified, then that many characters
     from the base 62 alphabet (digits + lowercase + uppercase latin) are used.
     """
+
     DOMAIN_MIN = 1_000_000  # 1M required in FF3-1
     BASE62 = string.digits + string.ascii_lowercase + string.ascii_uppercase
     BASE62_LEN = len(BASE62)
@@ -89,7 +90,9 @@ class FF3Cipher:
 
         # Check if the key is 128, 192, or 256 bits = 16, 24, or 32 bytes
         if klen not in (16, 24, 32):
-            raise ValueError(f'key length is {klen} bytes but must be 128, 192, or 256 bits')
+            raise ValueError(
+                f"key length is {klen} bytes but must be 128, 192, or 256 bits"
+            )
 
         # While FF3 allows radices in [2, 2^16], commonly useful range is 2..62
         if (radix < 2) or (radix > FF3Cipher.RADIX_MAX):
@@ -162,13 +165,17 @@ class FF3Cipher:
 
         # Check if message length is within minLength and maxLength bounds
         if (n < self.minLen) or (n > self.maxLen):
-            raise ValueError(f"message length {n} is not within min {self.minLen} and "
-                             f"max {self.maxLen} bounds")
+            raise ValueError(
+                f"message length {n} is not within min {self.minLen} and "
+                f"max {self.maxLen} bounds"
+            )
 
         # Make sure the length of tweak in bytes is 7 or 8 (56 or 64 bits)
         if len(tweakBytes) not in [TWEAK_LEN_NEW, TWEAK_LEN]:
-            raise ValueError(f"tweak length {len(tweakBytes)} invalid: tweak must be "
-                             f"{TWEAK_LEN_NEW * 8} or {TWEAK_LEN * 8} bits")
+            raise ValueError(
+                f"tweak length {len(tweakBytes)} invalid: tweak must be "
+                f"{TWEAK_LEN_NEW * 8} or {TWEAK_LEN * 8} bits"
+            )
 
         # Todo: Check message is in current radix
 
@@ -191,8 +198,8 @@ class FF3Cipher:
         # Pre-calculate the modulus since it's only one of 2 values,
         # depending on whether i is even or odd
 
-        modU = self.radix ** u
-        modV = self.radix ** v
+        modU = self.radix**u
+        modV = self.radix**v
         logger.debug(f"modU: {modU} modV: {modV}")
 
         # Main Feistel Round, 8 times
@@ -219,7 +226,7 @@ class FF3Cipher:
             S = reverse_bytes(S)
             # logger.debug("S:    ", S.hex())
 
-            y = int.from_bytes(S, byteorder='big')
+            y = int.from_bytes(S, byteorder="big")
 
             # Calculate c
             c = decode_int_r(A, self.alphabet)
@@ -263,13 +270,17 @@ class FF3Cipher:
 
         # Check if message length is within minLength and maxLength bounds
         if (n < self.minLen) or (n > self.maxLen):
-            raise ValueError(f"message length {n} is not within min {self.minLen} and "
-                             f"max {self.maxLen} bounds")
+            raise ValueError(
+                f"message length {n} is not within min {self.minLen} and "
+                f"max {self.maxLen} bounds"
+            )
 
         # Make sure the length of tweak in bytes is 7 or 8
         if len(tweakBytes) not in [TWEAK_LEN_NEW, TWEAK_LEN]:
-            raise ValueError(f"tweak length {len(tweakBytes)} invalid: tweak must be 8 "
-                             f"bytes, or 56 bits")
+            raise ValueError(
+                f"tweak length {len(tweakBytes)} invalid: tweak must be 8 "
+                f"bytes, or 56 bits"
+            )
 
         # Todo: Check message is in current radix
 
@@ -292,8 +303,8 @@ class FF3Cipher:
         # Pre-calculate the modulus since it's only one of 2 values,
         # depending on whether i is even or odd
 
-        modU = self.radix ** u
-        modV = self.radix ** v
+        modU = self.radix**u
+        modV = self.radix**v
         logger.debug(f"modU: {modU} modV: {modV}")
 
         # Main Feistel Round, 8 times
@@ -318,7 +329,7 @@ class FF3Cipher:
 
             # logger.debug("S:    ", S.hex())
 
-            y = int.from_bytes(S, byteorder='big')
+            y = int.from_bytes(S, byteorder="big")
 
             # Calculate c
             c = decode_int_r(B, self.alphabet)
@@ -351,7 +362,9 @@ def aes_ecb_encrypt(key, data):
     :return: The ciphertext as bytes.
     """
     if len(data) != BLOCK_SIZE:
-        raise ValueError(f"Data must be exactly {BLOCK_SIZE} bytes for AES ECB encryption")
+        raise ValueError(
+            f"Data must be exactly {BLOCK_SIZE} bytes for AES ECB encryption"
+        )
     cipher = Cipher(algorithms.AES(key), modes.ECB(), backend=default_backend())
     encryptor = cipher.encryptor()
     return encryptor.update(data) + encryptor.finalize()
@@ -375,7 +388,7 @@ def calculate_p(i, alphabet, W, B):
     BBytes = decode_int_r(B, alphabet).to_bytes(12, "big")
     # logger.debug(f"B: {B} BBytes: {BBytes.hex()}")
 
-    P[BLOCK_SIZE - len(BBytes):] = BBytes
+    P[BLOCK_SIZE - len(BBytes) :] = BBytes
     return P
 
 
@@ -384,11 +397,11 @@ def calculate_tweak64_ff3_1(tweak56):
     tweak64[0] = tweak56[0]
     tweak64[1] = tweak56[1]
     tweak64[2] = tweak56[2]
-    tweak64[3] = (tweak56[3] & 0xF0)
+    tweak64[3] = tweak56[3] & 0xF0
     tweak64[4] = tweak56[4]
     tweak64[5] = tweak56[5]
     tweak64[6] = tweak56[6]
-    tweak64[7] = ((tweak56[3] & 0x0F) << 4)
+    tweak64[7] = (tweak56[3] & 0x0F) << 4
     return bytes(tweak64)
 
 
@@ -404,11 +417,13 @@ def encode_int_r(n, alphabet, length=0):
         'A'
     """
     base = len(alphabet)
-    if (base > FF3Cipher.RADIX_MAX):
-        raise ValueError(f"Base {base} is outside range of supported radix "
-                         f"2..{FF3Cipher.RADIX_MAX}")
+    if base > FF3Cipher.RADIX_MAX:
+        raise ValueError(
+            f"Base {base} is outside range of supported radix "
+            f"2..{FF3Cipher.RADIX_MAX}"
+        )
 
-    x = ''
+    x = ""
     while n >= base:
         n, b = divmod(n, base)
         x += alphabet[b]
@@ -434,10 +449,10 @@ def decode_int_r(astring, alphabet):
     idx = 0
     try:
         for char in reversed(astring):
-            power = (strlen - (idx + 1))
-            num += alphabet.index(char) * (base ** power)
+            power = strlen - (idx + 1)
+            num += alphabet.index(char) * (base**power)
             idx += 1
     except ValueError:
-        raise ValueError(f'char {char} not found in alphabet {alphabet}')
+        raise ValueError(f"char {char} not found in alphabet {alphabet}")
 
     return num
