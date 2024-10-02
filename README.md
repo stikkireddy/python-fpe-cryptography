@@ -1,4 +1,11 @@
 # python-fpe-cryptography
+
+![GitHub License](https://img.shields.io/github/license/stikkireddy/python-fpe-cryptography)
+![Build](https://github.com/stikkireddy/python-fpe-cryptography/actions/workflows/build.yaml/badge.svg)
+[![codecov](https://codecov.io/github/stikkireddy/python-fpe-cryptography/branch/main/graph/badge.svg?token=EORUY66PNQ)](https://codecov.io/github/stikkireddy/python-fpe-cryptography)
+![GitHub Tag](https://img.shields.io/github/v/tag/stikkireddy/python-fpe-cryptography?sort=semver&label=Latest%20Version)
+
+
 Creates format preserving encryption using cryptography instead of pycryptodome. T
 his is so you can cleanly run this in Databricks sql using UC functions.
 Based off of https://github.com/mysto/python-fpe and ported to using cryptography AES ECB 
